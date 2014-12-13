@@ -3,27 +3,62 @@ var Youtube = require("youtube-api");
 var bunyan = require('bunyan');
 var log = bunyan.createLogger({name: 'kyot-sunday-playlists'});
 
-Youtube.authenticate({
-    type: "jwt"
-  , email: "91395162690-0l7o4si1s9np5f2d4b24gfrb4bkl15n8@developer.gserviceaccount.com"
-  , keyFile: 'kyot-sunday-playlists-e72f233718d2.pem'
-  , key: null
-  , subject: null // optional
-  , scopes: ["https://www.googleapis.com/auth/youtube"]
-}).authorize(function (err, data) {
-    if (err) { throw err; }
+var accessToken = 'ya29.2wBNUEVVl1lvdRG3E4Co3VC5-H-gA8QATVROjf08blLQHoV2arB1BpkExiNJuDzlM35toApeREi0tQ'
 
-Kyot.getShows(function (err, shows) {
-    log.info('Parsing complete, total shows ' + JSON.stringify(shows))
-})
-    /* Access resources */
-    var results = Youtube.search.list({
-        part: 'snippet',
-        q: 'dogs', maxResults: 25
-    }, function (err, data) {
-        console.log(err || data);
+
+Youtube.authenticate({
+    type: "oauth",
+    token: accessToken
+});
+
+
+    Kyot.getShows(function (err, shows) {
+        log.info('Parsing complete, total shows ' + shows.length);
+        var playlistTitle = new Date().getFullYear() + ' ' + shows[0].date + ' - ' + shows[0].hours[0].title;
     })
 
 
+var playlistTitle = 'test playlist';
+
+
+
+Youtube.playlists.insert({
+    part: 'snippet,status',
+    resource: {
+      snippet: {
+        title: playlistTitle,
+        description: 'A private playlist created with the YouTube API'
+      },
+      status: {
+        privacyStatus: 'private'
+      }
+    }
+}, function (err, playlist) {
+    console.log(err || playlist);
+    console.log('id --- ' + playlist.id)
+
+    Youtube.search.list({
+        q: 'dogs',
+        part: 'snippet'
+    }, function (err, data) {
+        console.log('search data')
+        console.log(err || data.items[0].id);
+
+        Youtube.playlistItems.insert({
+                part: 'snippet',
+                resource: {
+                  snippet: {
+                    playlistId: playlist.id,
+//                    resourceId: {
+//                        videoId: id,
+//                        kind: 'youtube#video'
+//                      }
+                        resourceId:  data.items[0].id
+                  }
+                }
+              });
+    });
 
 });
+
+
