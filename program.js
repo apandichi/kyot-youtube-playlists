@@ -3,7 +3,7 @@ var Youtube = require("youtube-api");
 var bunyan = require('bunyan');
 var log = bunyan.createLogger({name: 'kyot-sunday-playlists'});
 
-var accessToken = 'ya29.6AAz2nhaLw58pSKGJL-sWUOc83q2pAyo2NWEMMKVOTjVioAutiPMU8vcF7sCB0aVgP5ePDU3JszQ6w'
+var accessToken = 'ya29.6ACc8tx7r5b46nAmidmDZeeqmdQBDhLnC3V81rNl7Io666EODhhyNfQKywL_sjQz5S4znc387pp3MQ'
 
 
 Youtube.authenticate({
@@ -24,24 +24,64 @@ var deleteAllPlaylists = function () {
             Youtube.playlists.delete({
                 id: playlist.id
             }, function (err, data) {
-                console.log('Deleted playlist with id ' + item.id)
+                console.log('Deleted playlist with id ' + playlist.id)
             });
         })
     })
 }
 
-deleteAllPlaylists();
+var filterMatchingSongResults = function (items, song) {
+    var matching = items.filter(function (item) {
+        var matchesArtist = item.snippet.title.indexOf(song.songArtist) > -1;
+        var matchesTitle =  item.snippet.title.indexOf(song.songTitle) > -1;
+        return matchesArtist && matchesTitle;
+    });
 
+    return matching[0];
+}
 
-var createPlaylists = function () {
+var bestMatchingItem = function (matching) {
+    if (!matching || typeof matching == 'undefined' || matching.length == 0) {
+        return;
+    }
+    return matching[0];
+}
 
-    Kyot.getShows(function (err, shows) {
-        log.info('Parsing complete, total shows ' + shows.length);
+var parseHour = function (hour, playlist) {
+    hour.songs.forEach(function (song) {
+        var songArtistAndTitle = song.songArtist + ' ' + song.songTitle;
+        console.log('Searching for song artist and title: ' + songArtistAndTitle);
 
+        Youtube.search.list({
+            q: songArtistAndTitle,
+            part: 'snippet'
+        }, function (err, data) {
 
-        var show = shows[3];
-        var playlistTitle = new Date().getFullYear() + ' ' + show.date + ' - ' + show.hours[0].title;
+            var matching = filterMatchingSongResults(data.items, song);
+//            var firstMatchingItem = bestMatchingItem(matching);
+            if (!matching) return;
 
+            console.log('Inserting into playlist');
+
+            Youtube.playlistItems.insert({
+                part: 'snippet',
+                resource: {
+                  snippet: {
+                    playlistId: playlist.id,
+                    resourceId:  matching.id,
+                    position: 0
+                  }
+                }
+              }, function (err, data) {
+                    console.log(err || data.snippet.position + ' - Completed insert data into playlist' + data.snippet.title)
+              });
+        });
+    });
+}
+
+var createPlaylistsForShow = function (show) {
+    show.hours.forEach(function (hour) {
+        var playlistTitle = new Date().getFullYear() + ' ' + show.date + ' - ' + hour.title;
 
         Youtube.playlists.insert({
             part: 'snippet,status',
@@ -55,80 +95,25 @@ var createPlaylists = function () {
               }
             }
         }, function (err, playlist) {
-//                console.log(err || playlist);
-//                console.log('id --- ' + playlist.id)
-
-            show.hours[0].songs.forEach(function (song, index) {
-                var searchQuery = song.songArtist + ' ' + song.songTitle;
-                console.log('Searching for ' + searchQuery);
-
-
-                Youtube.search.list({
-                    q: searchQuery,
-                    part: 'snippet'
-                }, function (err, data) {
-                    //console.log('Search data result')
-                    //console.log(err || JSON.stringify(data));
-                    var matching = data.items.filter(function (item) {
-                        var searchQueryResultTitle = item.snippet.title;
-                        //console.log(searchQueryResultTitle);
-
-                        var matchesArtist = searchQueryResultTitle.indexOf(song.songArtist) > -1;
-                        var matchesTitle =  searchQueryResultTitle.indexOf(song.songTitle) > -1;
-
-                        if (matchesArtist && matchesTitle) {
-                            //console.log('Result matches: ' + searchQueryResultTitle);
-                        }
-
-                        return matchesArtist && matchesTitle;
-                    });
-
-                    if (!matching || typeof matching == 'undefined' || matching.length == 0) {
-                        console.log('No matches: ' + searchQuery)
-                        return;
-                    } else {
-                        console.log('Matching: ' + searchQuery);
-                    }
-
-                    var firstMatchingItem = matching[0];
-                    //console.log('First matching item: ' + JSON.stringify(firstMatchingItem));
-                    console.log('Inserting into playlist position: ' + index);
-
-                    Youtube.playlistItems.insert({
-                        part: 'snippet',
-                        resource: {
-                          snippet: {
-                            playlistId: playlist.id,
-                            resourceId:  firstMatchingItem.id,
-                            position: 0
-                          }
-                        }
-                      }, function (err, data) {
-                            console.log(err || data.snippet.position + ' - Completed insert data into playlist' + data.snippet.title)
-                      });
-
-                });
-
-
-            });
-
+            parseHour(hour, playlist);
         });
+    });
 
 
-
-
-
-
-
-
-
-    })
 
 }
 
 
+var createAllPlaylists = function () {
+    Kyot.getShows(function (err, shows) {
+        log.info('Parsing complete, total shows ' + shows.length);
+        shows.forEach(createPlaylistsForShow)
+    })
+}
 
 
+//deleteAllPlaylists();
+createAllPlaylists();
 
 
 
