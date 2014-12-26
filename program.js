@@ -4,7 +4,7 @@ var async = require('async');
 var bunyan = require('bunyan');
 var log = bunyan.createLogger({name: 'kyot-sunday-playlists'});
 
-var accessToken = 'ya29.6AA0_DW6Oq9XcyAQXZThbI6c0H7Ma5bFN_8UeJkHkSiVLCfACnTZBR3EmwWMeH32LI7YgSAv9rzYHQ'
+var accessToken = 'ya29.6ADmeEbXFgiwrSVGrtg4hpcyJpn2TjTt4jxr5g4KlGSkGsKJbaUgNuixcOUISu4w-H1ehOJ1v2Qq4g'
 
 
 Youtube.authenticate({
@@ -21,7 +21,7 @@ var deleteAllPlaylists = function () {
         mine: true,
         maxResults: 50
     } , function (err, data) {
-        log.info('Found playlists: ' + data.items.length);
+        log.info(err || 'Found playlists: ' + data.items.length);
 
         data.items.forEach(function (playlist) {
             Youtube.playlists.delete({
@@ -55,9 +55,9 @@ var filterMatchingSongResults = function (items, song) {
 
 var parseHour = function (hour, playlist) {
 
-    async.eachSeries(hour.songs, function (song) {
+    async.eachSeries(hour.songs, function (song, callback) {
         var songArtistAndTitle = song.songArtist + ' ' + song.songTitle;
-        log.info('Searching for song artist and title: ' + songArtistAndTitle);
+        log.info('Searching ' + songArtistAndTitle + ' for playlist ' + playlist.snippet.title);
 
         Youtube.search.list({
             q: songArtistAndTitle,
@@ -66,7 +66,11 @@ var parseHour = function (hour, playlist) {
         }, function (err, data) {
 
             var matching = filterMatchingSongResults(data.items, song);
-            if (!matching) return;
+            if (!matching) {
+                log.warn('No match for ' + songArtistAndTitle + ' into playlist ' + playlist.snippet.title);
+                callback();
+                return;
+            }
 
             log.info('Inserting ' + songArtistAndTitle + ' into playlist ' + playlist.snippet.title);
 
@@ -82,7 +86,8 @@ var parseHour = function (hour, playlist) {
                     if (err) {
                         log.error('Error while inserting ' + songArtistAndTitle + ' into playlist ' + playlist.snippet.title);
                         log.error('playlist id ' + playlist.id + ' matching id ' + JSON.stringify(matching.id));
-                        log.error(err)
+                        log.error(err);
+                        callback();
                         return;
                     }
                     log.info(
@@ -90,9 +95,12 @@ var parseHour = function (hour, playlist) {
                         ' --- completed insert into playlist ' +
                         playlist.snippet.title +
                         ' at position ' + data.snippet.position);
+                    callback();
               });
         });
     });
+
+
 }
 
 var createPlaylistsForShow = function (show) {
