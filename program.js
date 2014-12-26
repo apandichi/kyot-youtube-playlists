@@ -3,13 +3,15 @@ var Youtube = require("youtube-api");
 var bunyan = require('bunyan');
 var log = bunyan.createLogger({name: 'kyot-sunday-playlists'});
 
-var accessToken = 'ya29.6ACc8tx7r5b46nAmidmDZeeqmdQBDhLnC3V81rNl7Io666EODhhyNfQKywL_sjQz5S4znc387pp3MQ'
+var accessToken = 'ya29.6AD8YdoErHMJC8onO5VuaJIbeGTY5ctgGT_9sIjQfO7ZblrBZ9xO90CDZ_r38NImiH_LBYw8nFYCAg'
 
 
 Youtube.authenticate({
     type: "oauth",
     token: accessToken
 });
+
+var artistSplitTokens = ['&', ','];
 
 var deleteAllPlaylists = function () {
 
@@ -32,8 +34,16 @@ var deleteAllPlaylists = function () {
 
 var filterMatchingSongResults = function (items, song) {
     var matching = items.filter(function (item) {
-        var matchesArtist = item.snippet.title.indexOf(song.songArtist) > -1;
+        var artistTokens = song.songArtist.split(/[&,]+/).map(function (str) {return str.trim()});
+
+        var matchesArtist = artistTokens.reduce(function (prev, curr) {
+            return prev && (item.snippet.title.indexOf(curr) > -1);
+        }, true);
+        console.log(artistTokens + ' matches artist ' + item.snippet.title + ' ? ' + matchesArtist);
+
         var matchesTitle =  item.snippet.title.indexOf(song.songTitle) > -1;
+        console.log(song.songTitle + ' matches title ' + item.snippet.title + ' ? ' + matchesTitle);
+
         return matchesArtist && matchesTitle;
     });
 
@@ -61,7 +71,7 @@ var parseHour = function (hour, playlist) {
 //            var firstMatchingItem = bestMatchingItem(matching);
             if (!matching) return;
 
-            console.log('Inserting into playlist');
+            //console.log(matching.id + ' Requesting insert into playlist ' + playlist.id);
 
             Youtube.playlistItems.insert({
                 part: 'snippet',
@@ -73,7 +83,7 @@ var parseHour = function (hour, playlist) {
                   }
                 }
               }, function (err, data) {
-                    console.log(err || data.snippet.position + ' - Completed insert data into playlist' + data.snippet.title)
+                    //console.log(err || 'Completed request to insert into playlist ' + data.snippet.title)
               });
         });
     });
@@ -112,8 +122,8 @@ var createAllPlaylists = function () {
 }
 
 
-//deleteAllPlaylists();
-createAllPlaylists();
+deleteAllPlaylists();
+//createAllPlaylists();
 
 
 
