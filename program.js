@@ -3,7 +3,7 @@ var Youtube = require("youtube-api");
 var bunyan = require('bunyan');
 var log = bunyan.createLogger({name: 'kyot-sunday-playlists'});
 
-var accessToken = 'ya29.2wCYI425w6SYWqqeKMdbKY74qDXkSsJmZb1IjQiwZNcSuMwbU9zhsZw849BsdpGTdmBplj9YRSEHTg'
+var accessToken = 'ya29.6AAz2nhaLw58pSKGJL-sWUOc83q2pAyo2NWEMMKVOTjVioAutiPMU8vcF7sCB0aVgP5ePDU3JszQ6w'
 
 
 Youtube.authenticate({
@@ -11,6 +11,29 @@ Youtube.authenticate({
     token: accessToken
 });
 
+var deleteAllPlaylists = function () {
+
+    Youtube.playlists.list({
+        part: 'snippet,status',
+        mine: true,
+        maxResults: 50
+    } , function (err, data) {
+        console.log('Found playlists: ' + data.items.length);
+
+        data.items.forEach(function (playlist) {
+            Youtube.playlists.delete({
+                id: playlist.id
+            }, function (err, data) {
+                console.log('Deleted playlist with id ' + item.id)
+            });
+        })
+    })
+}
+
+deleteAllPlaylists();
+
+
+var createPlaylists = function () {
 
     Kyot.getShows(function (err, shows) {
         log.info('Parsing complete, total shows ' + shows.length);
@@ -100,6 +123,8 @@ Youtube.authenticate({
 
 
     })
+
+}
 
 
 
