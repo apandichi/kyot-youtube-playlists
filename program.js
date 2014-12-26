@@ -1,9 +1,10 @@
 var Kyot = require('kyot-sunday-playlists')
 var Youtube = require("youtube-api");
+var async = require('async');
 var bunyan = require('bunyan');
 var log = bunyan.createLogger({name: 'kyot-sunday-playlists'});
 
-var accessToken = 'ya29.6AD8YdoErHMJC8onO5VuaJIbeGTY5ctgGT_9sIjQfO7ZblrBZ9xO90CDZ_r38NImiH_LBYw8nFYCAg'
+var accessToken = 'ya29.6AA0_DW6Oq9XcyAQXZThbI6c0H7Ma5bFN_8UeJkHkSiVLCfACnTZBR3EmwWMeH32LI7YgSAv9rzYHQ'
 
 
 Youtube.authenticate({
@@ -39,43 +40,56 @@ var filterMatchingSongResults = function (items, song) {
         var matchesArtist = artistTokens.reduce(function (prev, curr) {
             return prev && (item.snippet.title.indexOf(curr) > -1);
         }, true);
-        log.info(artistTokens + ' matches artist ' + item.snippet.title + ' ? ' + matchesArtist);
+        log.debug(artistTokens + ' matches artist ' + item.snippet.title + ' ? ' + matchesArtist);
 
         var matchesTitle =  item.snippet.title.indexOf(song.songTitle) > -1;
-        log.info(song.songTitle + ' matches title ' + item.snippet.title + ' ? ' + matchesTitle);
+        log.debug(song.songTitle + ' matches title ' + item.snippet.title + ' ? ' + matchesTitle);
 
-        return matchesArtist && matchesTitle;
+        var matches = matchesArtist && matchesTitle;
+        log.debug(item.snippet.title + ' matches: ' + matches);
+        return matches;
     });
 
     return matching[0];
 }
 
 var parseHour = function (hour, playlist) {
-    hour.songs.forEach(function (song) {
+
+    async.eachSeries(hour.songs, function (song) {
         var songArtistAndTitle = song.songArtist + ' ' + song.songTitle;
         log.info('Searching for song artist and title: ' + songArtistAndTitle);
 
         Youtube.search.list({
             q: songArtistAndTitle,
-            part: 'snippet'
+            part: 'snippet',
+            type: 'video'
         }, function (err, data) {
 
             var matching = filterMatchingSongResults(data.items, song);
             if (!matching) return;
 
-            log.info(matching.id + ' Requesting insert into playlist ' + playlist.id);
+            log.info('Inserting ' + songArtistAndTitle + ' into playlist ' + playlist.snippet.title);
 
             Youtube.playlistItems.insert({
                 part: 'snippet',
                 resource: {
                   snippet: {
                     playlistId: playlist.id,
-                    resourceId:  matching.id,
-                    position: 0
+                    resourceId:  matching.id
                   }
                 }
               }, function (err, data) {
-                    log.info(err || 'Completed request to insert into playlist ' + data.snippet.title)
+                    if (err) {
+                        log.error('Error while inserting ' + songArtistAndTitle + ' into playlist ' + playlist.snippet.title);
+                        log.error('playlist id ' + playlist.id + ' matching id ' + JSON.stringify(matching.id));
+                        log.error(err)
+                        return;
+                    }
+                    log.info(
+                        songArtistAndTitle +
+                        ' --- completed insert into playlist ' +
+                        playlist.snippet.title +
+                        ' at position ' + data.snippet.position);
               });
         });
     });
@@ -114,9 +128,11 @@ var createAllPlaylists = function () {
 }
 
 
-deleteAllPlaylists();
-//createAllPlaylists();
+module.exports = {
+    deleteAllPlaylists: deleteAllPlaylists,
+    createAllPlaylists: createAllPlaylists
+}
 
 
-
-
+//deleteAllPlaylists();
+createAllPlaylists();
