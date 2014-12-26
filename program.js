@@ -20,13 +20,13 @@ var deleteAllPlaylists = function () {
         mine: true,
         maxResults: 50
     } , function (err, data) {
-        console.log('Found playlists: ' + data.items.length);
+        log.info('Found playlists: ' + data.items.length);
 
         data.items.forEach(function (playlist) {
             Youtube.playlists.delete({
                 id: playlist.id
             }, function (err, data) {
-                console.log('Deleted playlist with id ' + playlist.id)
+                log.info('Deleted playlist with id ' + playlist.id)
             });
         })
     })
@@ -39,10 +39,10 @@ var filterMatchingSongResults = function (items, song) {
         var matchesArtist = artistTokens.reduce(function (prev, curr) {
             return prev && (item.snippet.title.indexOf(curr) > -1);
         }, true);
-        console.log(artistTokens + ' matches artist ' + item.snippet.title + ' ? ' + matchesArtist);
+        log.info(artistTokens + ' matches artist ' + item.snippet.title + ' ? ' + matchesArtist);
 
         var matchesTitle =  item.snippet.title.indexOf(song.songTitle) > -1;
-        console.log(song.songTitle + ' matches title ' + item.snippet.title + ' ? ' + matchesTitle);
+        log.info(song.songTitle + ' matches title ' + item.snippet.title + ' ? ' + matchesTitle);
 
         return matchesArtist && matchesTitle;
     });
@@ -53,7 +53,7 @@ var filterMatchingSongResults = function (items, song) {
 var parseHour = function (hour, playlist) {
     hour.songs.forEach(function (song) {
         var songArtistAndTitle = song.songArtist + ' ' + song.songTitle;
-        console.log('Searching for song artist and title: ' + songArtistAndTitle);
+        log.info('Searching for song artist and title: ' + songArtistAndTitle);
 
         Youtube.search.list({
             q: songArtistAndTitle,
@@ -63,7 +63,7 @@ var parseHour = function (hour, playlist) {
             var matching = filterMatchingSongResults(data.items, song);
             if (!matching) return;
 
-            //console.log(matching.id + ' Requesting insert into playlist ' + playlist.id);
+            log.info(matching.id + ' Requesting insert into playlist ' + playlist.id);
 
             Youtube.playlistItems.insert({
                 part: 'snippet',
@@ -75,7 +75,7 @@ var parseHour = function (hour, playlist) {
                   }
                 }
               }, function (err, data) {
-                    //console.log(err || 'Completed request to insert into playlist ' + data.snippet.title)
+                    log.info(err || 'Completed request to insert into playlist ' + data.snippet.title)
               });
         });
     });
