@@ -50,13 +50,6 @@ var filterMatchingSongResults = function (items, song) {
     return matching[0];
 }
 
-var bestMatchingItem = function (matching) {
-    if (!matching || typeof matching == 'undefined' || matching.length == 0) {
-        return;
-    }
-    return matching[0];
-}
-
 var parseHour = function (hour, playlist) {
     hour.songs.forEach(function (song) {
         var songArtistAndTitle = song.songArtist + ' ' + song.songTitle;
@@ -68,7 +61,6 @@ var parseHour = function (hour, playlist) {
         }, function (err, data) {
 
             var matching = filterMatchingSongResults(data.items, song);
-//            var firstMatchingItem = bestMatchingItem(matching);
             if (!matching) return;
 
             //console.log(matching.id + ' Requesting insert into playlist ' + playlist.id);
