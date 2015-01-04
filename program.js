@@ -1,10 +1,11 @@
 var Kyot = require('kyot-sunday-playlists')
 var Youtube = require("youtube-api");
 var async = require('async');
+
 var bunyan = require('bunyan');
 var log = bunyan.createLogger({name: 'kyot-sunday-playlists'});
 
-var accessToken = 'ya29.6ADmeEbXFgiwrSVGrtg4hpcyJpn2TjTt4jxr5g4KlGSkGsKJbaUgNuixcOUISu4w-H1ehOJ1v2Qq4g'
+var accessToken = 'ya29.8QDGugMXFgfklpBGn5YNOggDNbnrb-WyBqQix4DREdfgeX8-lZ6RgXTxpA6SO9tSdnh2VzXLrS79uA'
 
 
 Youtube.authenticate({
@@ -103,9 +104,21 @@ var parseHour = function (hour, playlist) {
 
 }
 
+var createPlaylistTitle = function (show, hour) {
+    var monthNames = [ "January", "February", "March", "April", "May", "June",
+        "July", "August", "September", "October", "November", "December" ];
+    var year = new Date().getFullYear();
+    var showMonth = monthNames.indexOf(show.date.split(" ")[0]);
+    if (showMonth > new Date().getMonth()) {
+        year = year - 1;
+    }
+    var playlistTitle = year + ' ' + show.date + ' - ' + hour.title;
+    return playlistTitle;
+}
+
 var createPlaylistsForShow = function (show) {
     show.hours.forEach(function (hour) {
-        var playlistTitle = new Date().getFullYear() + ' ' + show.date + ' - ' + hour.title;
+        var playlistTitle = createPlaylistTitle(show, hour);
 
         Youtube.playlists.insert({
             part: 'snippet,status',
